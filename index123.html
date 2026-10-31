@@ -1,0 +1,126 @@
+{\rtf1\ansi\ansicpg936\cocoartf2869
+\cocoatextscaling0\cocoaplatform0{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww11520\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 <!DOCTYPE html>\
+<html lang="zh-CN">\
+<head>\
+    <meta charset="UTF-8">\
+    <title>\uc0\u32701 \u26519 \u30524  - AI \u21160 \u20316 \u21407 \u22411 </title>\
+    <!-- \uc0\u21152 \u36733  TensorFlow.js \u21644  PoseNet \u27169 \u22411  -->\
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>\
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/posenet"></script>\
+    <style>\
+        body \{ font-family: sans-serif; display: flex; flex-direction: column; align-items: center; background: #1a1a1a; color: white; \}\
+        canvas \{ border: 4px solid #333; border-radius: 10px; background: #000; \}\
+        .controls \{ margin: 20px; padding: 15px; background: #333; border-radius: 8px; text-align: center; \}\
+        #status \{ font-weight: bold; font-size: 1.2rem; margin-top: 10px; \}\
+        .warning \{ color: #ff4757; \}\
+        .success \{ color: #2ed573; \}\
+    </style>\
+</head>\
+<body>\
+\
+    <h2>\uc0\u32701 \u26519 \u30524  AI \u25945 \u23398 \u21407 \u22411  - \u39640 \u36828 \u29699 \u35786 \u26029 </h2>\
+    \
+    <div class="controls">\
+        <div>\uc0\u25163 \u33218 \u20280 \u23637 \u35282 \u24230 : <span id="angle-display">0\'b0</span></div>\
+        <div id="status">\uc0\u31561 \u24453 \u27169 \u22411 \u21152 \u36733 ...</div>\
+    </div>\
+\
+    <div style="position: relative;">\
+        <video id="video" width="640" height="480" autoplay style="display: none;"></video>\
+        <canvas id="output"></canvas>\
+    </div>\
+\
+    <script>\
+        const video = document.getElementById('video');\
+        const canvas = document.getElementById('output');\
+        const ctx = canvas.getContext('2d');\
+        const statusText = document.getElementById('status');\
+        const angleDisplay = document.getElementById('angle-display');\
+\
+        // \uc0\u35774 \u32622 \u25668 \u20687 \u22836 \
+        async function setupCamera() \{\
+            const stream = await navigator.mediaDevices.getUserMedia(\{ video: true \});\
+            video.srcObject = stream;\
+            return new Promise((resolve) => \{\
+                video.onloadedmetadata = () => resolve(video);\
+            \});\
+        \}\
+\
+        // \uc0\u35745 \u31639 \u35282 \u24230 \u20989 \u25968 \
+        function getAngle(p1, p2, p3) \{\
+            let angle = Math.atan2(p3.y - p2.y, p3.x - p2.x) - Math.atan2(p1.y - p2.y, p1.x - p2.x);\
+            angle = Math.abs(angle * 180 / Math.PI);\
+            if (angle > 180) angle = 360 - angle;\
+            return Math.round(angle);\
+        \}\
+\
+        async function main() \{\
+            statusText.innerText = "\uc0\u27491 \u22312 \u21152 \u36733 \u27169 \u22411 \u65292 \u35831 \u31245 \u20505 ...";\
+            const net = await posenet.load();\
+            statusText.innerText = "\uc0\u27169 \u22411 \u21152 \u36733 \u23436 \u25104 \u65281 \u35831 \u36864 \u21518 \u23637 \u31034 \u20840 \u36523 \u12290 ";\
+\
+            await setupCamera();\
+            canvas.width = 640;\
+            canvas.height = 480;\
+\
+            async function detect() \{\
+                const pose = await net.estimateSinglePose(video);\
+                \
+                ctx.clearRect(0, 0, 640, 480);\
+                ctx.drawImage(video, 0, 0, 640, 480);\
+\
+                // \uc0\u25552 \u21462 \u21491 \u20391 \u36523 \u20307 \u20851 \u38190 \u28857 \u36827 \u34892 \u20998 \u26512 \u65288 \u20551 \u35774 \u21491 \u25163 \u25381 \u25293 \u65289 \
+                const rShoulder = pose.keypoints[6].position;\
+                const rElbow = pose.keypoints[8].position;\
+                const rWrist = pose.keypoints[10].position;\
+\
+                // \uc0\u21482 \u26377 \u24403 \u32622 \u20449 \u24230 \u36275 \u22815 \u39640 \u26102 \u25165 \u20998 \u26512 \
+                if (pose.keypoints[6].score > 0.5 && pose.keypoints[8].score > 0.5 && pose.keypoints[10].score > 0.5) \{\
+                    const angle = getAngle(rShoulder, rElbow, rWrist);\
+                    angleDisplay.innerText = angle + "\'b0";\
+\
+                    // \uc0\u26680 \u24515 \u36923 \u36753 \u65306 \u39640 \u36828 \u29699 \u20280 \u23637 \u21028 \u26029 \
+                    // \uc0\u21028 \u26029 \u25163 \u33109 \u26159 \u21542 \u39640 \u20110 \u32937 \u33152 \u65288 \u22788 \u20110 \u25381 \u25293 \u29366 \u24577 \u65289 \
+                    if (rWrist.y < rShoulder.y) \{\
+                        if (angle < 160) \{\
+                            statusText.innerText = "\uc0\u10060  \u35686 \u21578 \u65306 \u35831 \u20280 \u30452 \u25163 \u33218 \u20987 \u29699 \u65281 ";\
+                            statusText.className = "warning";\
+                            drawSkeleton(pose.keypoints, "red");\
+                        \} else \{\
+                            statusText.innerText = "\uc0\u9989  \u23039 \u21183 \u26631 \u20934 \u65306 \u20987 \u29699 \u28857 \u26497 \u20339 \u65281 ";\
+                            statusText.className = "success";\
+                            drawSkeleton(pose.keypoints, "#2ed573");\
+                        \}\
+                    \} else \{\
+                        statusText.innerText = "\uc0\u20934 \u22791 \u25381 \u25293 ...";\
+                        statusText.className = "";\
+                        drawSkeleton(pose.keypoints, "white");\
+                    \}\
+                \}\
+\
+                requestAnimationFrame(detect);\
+            \}\
+            detect();\
+        \}\
+\
+        function drawSkeleton(keypoints, color) \{\
+            keypoints.forEach(point => \{\
+                if (point.score > 0.5) \{\
+                    ctx.beginPath();\
+                    ctx.arc(point.position.x, point.position.y, 5, 0, 2 * Math.PI);\
+                    ctx.fillStyle = color;\
+                    ctx.fill();\
+                \}\
+            \});\
+        \}\
+\
+        main();\
+    </script>\
+</body>\
+</html>}
